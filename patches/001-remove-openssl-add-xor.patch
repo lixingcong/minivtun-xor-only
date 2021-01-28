@@ -1,0 +1,130 @@
+diff --git a/src/Makefile b/src/Makefile
+index 0a62ebd..2318180 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -13,7 +13,7 @@ CFLAGS += -Wall
+ HEADERS = minivtun.h library.h list.h jhash.h
+ 
+ minivtun: minivtun.o library.o server.o client.o
+-	$(CC) $(LDFLAGS) -o $@ $^ -lcrypto
++	$(CC) $(LDFLAGS) -o $@ $^
+ 
+ %.o: %.c $(HEADERS)
+ 	$(CC) $(CFLAGS) -c -o $@ $<
+diff --git a/src/library.c b/src/library.c
+index a3ea897..d57065c 100644
+--- a/src/library.c
++++ b/src/library.c
+@@ -1,4 +1,4 @@
+-/*
++﻿/*
+  * Copyright (c) 2015 Justin Liu
+  * Author: Justin Liu <rssnsj@gmail.com>
+  * https://github.com/rssnsj/minivtun
+@@ -13,22 +13,31 @@
+ #include <signal.h>
+ #include <sys/socket.h>
+ #include <sys/ioctl.h>
++#ifdef ENABLE_OPENSSL
+ #include <openssl/evp.h>
+ #include <openssl/md5.h>
++#else
++#include "jhash.h"
++#endif
+ 
+ #include "library.h"
+ 
+ struct name_cipher_pair cipher_pairs[] = {
++#ifdef ENABLE_OPENSSL
+ 	{ "aes-128", EVP_aes_128_cbc, },
+ 	{ "aes-256", EVP_aes_256_cbc, },
+ 	{ "des", EVP_des_cbc, },
+ 	{ "desx", EVP_desx_cbc, },
+ 	{ "rc4", EVP_rc4, },
++#else
++    { "xor", NULL, },
++#endif
+ 	{ NULL, NULL, },
+ };
+ 
+ const void *get_crypto_type(const char *name)
+ {
++#ifdef ENABLE_OPENSSL
+ 	const EVP_CIPHER *cipher = NULL;
+ 	int i;
+ 
+@@ -46,6 +55,9 @@ const void *get_crypto_type(const char *name)
+ 	} else {
+ 		return NULL;
+ 	}
++#else
++	return 1;
++#endif
+ }
+ 
+ static const char crypto_ivec_initdata[CRYPTO_MAX_BLOCK_SIZE] = {
+@@ -68,6 +80,7 @@ static const char crypto_ivec_initdata[CRYPTO_MAX_BLOCK_SIZE] = {
+ void datagram_encrypt(const void *key, const void *cptype, void *in,
+ 		void *out, size_t *dlen)
+ {
++#ifdef ENABLE_OPENSSL
+ 	size_t iv_len = EVP_CIPHER_iv_length((const EVP_CIPHER *)cptype);
+ 	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+ 	unsigned char iv[CRYPTO_MAX_KEY_SIZE];
+@@ -87,11 +100,20 @@ void datagram_encrypt(const void *key, const void *cptype, void *in,
+ 	EVP_CIPHER_CTX_free(ctx);
+ 
+ 	*dlen = (size_t)(outl + outl2);
++#else
++	size_t i = 0;
++	unsigned char* pIn=in;
++	unsigned char* pOut=out;
++	const unsigned char* pKey=key;
++	for(; i < *dlen; ++i)
++		*(pOut++) = *(pIn++) ^ pKey[i % CRYPTO_MAX_KEY_SIZE];
++#endif
+ }
+ 
+ void datagram_decrypt(const void *key, const void *cptype, void *in,
+ 		void *out, size_t *dlen)
+ {
++#ifdef ENABLE_OPENSSL
+ 	size_t iv_len = EVP_CIPHER_iv_length((const EVP_CIPHER *)cptype);
+ 	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+ 	unsigned char iv[CRYPTO_MAX_KEY_SIZE];
+@@ -111,10 +133,14 @@ void datagram_decrypt(const void *key, const void *cptype, void *in,
+ 	EVP_CIPHER_CTX_free(ctx);
+ 
+ 	*dlen = (size_t)(outl + outl2);
++#else
++	datagram_encrypt(key, cptype, in, out, dlen);
++#endif
+ }
+ 
+ void fill_with_string_md5sum(const char *in, void *out, size_t outlen)
+ {
++#ifdef ENABLE_OPENSSL
+ 	char *outp = out, *oute = outp + outlen;
+ 	MD5_CTX ctx;
+ 
+@@ -127,6 +153,20 @@ void fill_with_string_md5sum(const char *in, void *out, size_t outlen)
+ 		size_t bs = (oute - outp >= 16) ? 16 : (oute - outp);
+ 		memcpy(outp, out, bs);
+ 	}
++#else
++	uint32_t loopCount = outlen / sizeof(uint32_t);
++	uint32_t* pOut32 = out;
++	uint32_t hashVal = JHASH_INITVAL;
++
++	memset(out, 0xff, outlen);
++	memcpy(out, in, strlen(in));
++
++	while(loopCount--){
++		*pOut32=jhash_1word(*pOut32, hashVal);
++		++pOut32;
++		++hashVal;
++	}
++#endif
+ }
+ 
+ /* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= */
