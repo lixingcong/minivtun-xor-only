@@ -1,0 +1,3 @@
+[submodule "minivtun"]
+	path = minivtun
+	url = https://github.com/rssnsj/minivtun
