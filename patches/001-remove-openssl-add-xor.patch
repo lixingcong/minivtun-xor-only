@@ -12,7 +12,7 @@ index 0a62ebd..2318180 100644
  %.o: %.c $(HEADERS)
  	$(CC) $(CFLAGS) -c -o $@ $<
 diff --git a/src/library.c b/src/library.c
-index a3ea897..d57065c 100644
+index a3ea897..4f7a0e6 100644
 --- a/src/library.c
 +++ b/src/library.c
 @@ -1,4 +1,4 @@
@@ -21,7 +21,7 @@ index a3ea897..d57065c 100644
   * Copyright (c) 2015 Justin Liu
   * Author: Justin Liu <rssnsj@gmail.com>
   * https://github.com/rssnsj/minivtun
-@@ -13,22 +13,31 @@
+@@ -13,22 +13,29 @@
  #include <signal.h>
  #include <sys/socket.h>
  #include <sys/ioctl.h>
@@ -41,8 +41,6 @@ index a3ea897..d57065c 100644
  	{ "des", EVP_des_cbc, },
  	{ "desx", EVP_desx_cbc, },
  	{ "rc4", EVP_rc4, },
-+#else
-+    { "xor", NULL, },
 +#endif
  	{ NULL, NULL, },
  };
@@ -53,16 +51,26 @@ index a3ea897..d57065c 100644
  	const EVP_CIPHER *cipher = NULL;
  	int i;
  
-@@ -46,6 +55,9 @@ const void *get_crypto_type(const char *name)
+@@ -46,14 +53,19 @@ const void *get_crypto_type(const char *name)
  	} else {
  		return NULL;
  	}
 +#else
-+	return 1;
++	return NULL;
 +#endif
  }
  
++#ifdef ENABLE_OPENSSL
  static const char crypto_ivec_initdata[CRYPTO_MAX_BLOCK_SIZE] = {
+ 	0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 0x78, 0x90,
+ 	0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 0x78, 0x90,
+ 	0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 0x78, 0x90,
+ 	0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 0x78, 0x90,
+ };
++#endif
+ 
+ #define CRYPTO_DATA_PADDING(data, dlen, bs) \
+ 	do { \
 @@ -68,6 +80,7 @@ static const char crypto_ivec_initdata[CRYPTO_MAX_BLOCK_SIZE] = {
  void datagram_encrypt(const void *key, const void *cptype, void *in,
  		void *out, size_t *dlen)
@@ -128,3 +136,75 @@ index a3ea897..d57065c 100644
  }
  
  /* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= */
+diff --git a/src/minivtun.c b/src/minivtun.c
+index 6e88304..1eb1d94 100644
+--- a/src/minivtun.c
++++ b/src/minivtun.c
+@@ -146,7 +146,9 @@ static void parse_virtual_route(const char *arg)
+ 
+ static void print_help(int argc, char *argv[])
+ {
++#ifdef ENABLE_OPENSSL
+ 	int i;
++#endif
+ 
+ 	printf("Mini virtual tunneller in non-standard protocol.\n");
+ 	printf("Usage:\n");
+@@ -164,7 +166,9 @@ static void print_help(int argc, char *argv[])
+ 	printf("  -p, --pidfile <pid_file>            PID file of the daemon\n");
+ 	printf("  -E, --tap                           TAP mode\n");
+ 	printf("  -e, --key <encryption_key>          shared password for data encryption\n");
++#ifdef ENABLE_OPENSSL
+ 	printf("  -t, --type <encryption_type>        encryption type\n");
++#endif
+ 	printf("  -v, --route <network/prefix>[=gw]   attached IPv4/IPv6 route on this link, can be multiple\n");
+ 	printf("  -w, --wait-dns                      wait for DNS resolve ready after service started\n");
+ 	printf("  -D, --dynamic-link                  dynamic link mode, not bring up until data received\n");
+@@ -179,18 +183,22 @@ static void print_help(int argc, char *argv[])
+ 	printf("  -P, --max-droprate <1~100>          maximum allowed packet drop percentage, default: %u%%\n", config.max_droprate);
+ 	printf("  -X, --max-rtt <N>                   maximum allowed echo delay (ms), default: unlimited\n");
+ 	printf("  -h, --help                          print this help\n");
++#ifdef ENABLE_OPENSSL
+ 	printf("Supported encryption algorithms:\n");
+ 	printf("  ");
+ 	for (i = 0; cipher_pairs[i].name; i++)
+ 		printf("%s, ", cipher_pairs[i].name);
+ 	printf("\n");
++#endif
+ }
+ 
+ int main(int argc, char *argv[])
+ {
+ 	const char *tun_ip_config = NULL, *tun_ip6_config = NULL;
+ 	const char *loc_addr_pair = NULL, *peer_addr_pair = NULL;
++#ifdef ENABLE_OPENSSL
+ 	const char *crypto_type = CRYPTO_DEFAULT_ALGORITHM;
++#endif
+ 	int override_mtu = 0, opt;
+ 	struct timeval current;
+ 	char *sp;
+@@ -262,9 +270,11 @@ int main(int argc, char *argv[])
+ 		case 'e':
+ 			config.crypto_passwd = optarg;
+ 			break;
++#ifdef ENABLE_OPENSSL
+ 		case 't':
+ 			crypto_type = optarg;
+ 			break;
++#endif
+ 		case 'v':
+ 			parse_virtual_route(optarg);
+ 			break;
+@@ -423,10 +433,12 @@ int main(int argc, char *argv[])
+ 
+ 	if (enabled_encryption()) {
+ 		fill_with_string_md5sum(config.crypto_passwd, config.crypto_key, CRYPTO_MAX_KEY_SIZE);
++#ifdef ENABLE_OPENSSL
+ 		if ((config.crypto_type = get_crypto_type(crypto_type)) == NULL) {
+ 			fprintf(stderr, "*** No such encryption type defined: %s.\n", crypto_type);
+ 			exit(1);
+ 		}
++#endif
+ 	} else {
+ 		memset(config.crypto_key, 0x0, CRYPTO_MAX_KEY_SIZE);
+ 		fprintf(stderr, "*** WARNING: Transmission will not be encrypted.\n");
