@@ -12,7 +12,7 @@ index 0a62ebd..2318180 100644
  %.o: %.c $(HEADERS)
  	$(CC) $(CFLAGS) -c -o $@ $<
 diff --git a/src/library.c b/src/library.c
-index a3ea897..4f7a0e6 100644
+index 84b49d5..635bad4 100644
 --- a/src/library.c
 +++ b/src/library.c
 @@ -1,4 +1,4 @@
@@ -21,7 +21,7 @@ index a3ea897..4f7a0e6 100644
   * Copyright (c) 2015 Justin Liu
   * Author: Justin Liu <rssnsj@gmail.com>
   * https://github.com/rssnsj/minivtun
-@@ -13,22 +13,29 @@
+@@ -13,23 +13,30 @@
  #include <signal.h>
  #include <sys/socket.h>
  #include <sys/ioctl.h>
@@ -31,6 +31,7 @@ index a3ea897..4f7a0e6 100644
 +#else
 +#include "jhash.h"
 +#endif
+ #include <net/route.h>
  
  #include "library.h"
  
@@ -51,7 +52,7 @@ index a3ea897..4f7a0e6 100644
  	const EVP_CIPHER *cipher = NULL;
  	int i;
  
-@@ -46,14 +53,19 @@ const void *get_crypto_type(const char *name)
+@@ -47,14 +54,19 @@ const void *get_crypto_type(const char *name)
  	} else {
  		return NULL;
  	}
@@ -71,7 +72,7 @@ index a3ea897..4f7a0e6 100644
  
  #define CRYPTO_DATA_PADDING(data, dlen, bs) \
  	do { \
-@@ -68,6 +80,7 @@ static const char crypto_ivec_initdata[CRYPTO_MAX_BLOCK_SIZE] = {
+@@ -69,6 +81,7 @@ static const char crypto_ivec_initdata[CRYPTO_MAX_BLOCK_SIZE] = {
  void datagram_encrypt(const void *key, const void *cptype, void *in,
  		void *out, size_t *dlen)
  {
@@ -79,7 +80,7 @@ index a3ea897..4f7a0e6 100644
  	size_t iv_len = EVP_CIPHER_iv_length((const EVP_CIPHER *)cptype);
  	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
  	unsigned char iv[CRYPTO_MAX_KEY_SIZE];
-@@ -87,11 +100,20 @@ void datagram_encrypt(const void *key, const void *cptype, void *in,
+@@ -88,11 +101,20 @@ void datagram_encrypt(const void *key, const void *cptype, void *in,
  	EVP_CIPHER_CTX_free(ctx);
  
  	*dlen = (size_t)(outl + outl2);
@@ -100,7 +101,7 @@ index a3ea897..4f7a0e6 100644
  	size_t iv_len = EVP_CIPHER_iv_length((const EVP_CIPHER *)cptype);
  	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
  	unsigned char iv[CRYPTO_MAX_KEY_SIZE];
-@@ -111,10 +133,14 @@ void datagram_decrypt(const void *key, const void *cptype, void *in,
+@@ -112,10 +134,14 @@ void datagram_decrypt(const void *key, const void *cptype, void *in,
  	EVP_CIPHER_CTX_free(ctx);
  
  	*dlen = (size_t)(outl + outl2);
@@ -115,7 +116,7 @@ index a3ea897..4f7a0e6 100644
  	char *outp = out, *oute = outp + outlen;
  	MD5_CTX ctx;
  
-@@ -127,6 +153,20 @@ void fill_with_string_md5sum(const char *in, void *out, size_t outlen)
+@@ -128,6 +154,20 @@ void fill_with_string_md5sum(const char *in, void *out, size_t outlen)
  		size_t bs = (oute - outp >= 16) ? 16 : (oute - outp);
  		memcpy(outp, out, bs);
  	}
