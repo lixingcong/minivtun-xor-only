@@ -1,6 +1,6 @@
-This is a patched verion of minivtun.
+This is a patched version of minivtun.
 
 - Remove all ciphers and dependency of openssl
 
-- Add simple XOR, for test purpose only.
+- Add simple cipher: XOR, for fast/test purpose only
 
