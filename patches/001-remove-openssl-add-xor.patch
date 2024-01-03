@@ -138,10 +138,10 @@ index 84b49d5..635bad4 100644
  
  /* =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= */
 diff --git a/src/minivtun.c b/src/minivtun.c
-index 6e88304..1eb1d94 100644
+index 6e88304..af749dc 100644
 --- a/src/minivtun.c
 +++ b/src/minivtun.c
-@@ -146,7 +146,9 @@ static void parse_virtual_route(const char *arg)
+@@ -146,9 +146,14 @@ static void parse_virtual_route(const char *arg)
  
  static void print_help(int argc, char *argv[])
  {
@@ -150,8 +150,13 @@ index 6e88304..1eb1d94 100644
 +#endif
  
  	printf("Mini virtual tunneller in non-standard protocol.\n");
++#ifndef ENABLE_OPENSSL
++	printf("Warning: This patched version use a weak cipher. Use at your own risk.\n");
++#endif
  	printf("Usage:\n");
-@@ -164,7 +166,9 @@ static void print_help(int argc, char *argv[])
+ 	printf("  %s [options]\n", argv[0]);
+ 	printf("Options:\n");
+@@ -164,7 +169,9 @@ static void print_help(int argc, char *argv[])
  	printf("  -p, --pidfile <pid_file>            PID file of the daemon\n");
  	printf("  -E, --tap                           TAP mode\n");
  	printf("  -e, --key <encryption_key>          shared password for data encryption\n");
@@ -161,7 +166,7 @@ index 6e88304..1eb1d94 100644
  	printf("  -v, --route <network/prefix>[=gw]   attached IPv4/IPv6 route on this link, can be multiple\n");
  	printf("  -w, --wait-dns                      wait for DNS resolve ready after service started\n");
  	printf("  -D, --dynamic-link                  dynamic link mode, not bring up until data received\n");
-@@ -179,18 +183,22 @@ static void print_help(int argc, char *argv[])
+@@ -179,18 +186,22 @@ static void print_help(int argc, char *argv[])
  	printf("  -P, --max-droprate <1~100>          maximum allowed packet drop percentage, default: %u%%\n", config.max_droprate);
  	printf("  -X, --max-rtt <N>                   maximum allowed echo delay (ms), default: unlimited\n");
  	printf("  -h, --help                          print this help\n");
@@ -184,7 +189,7 @@ index 6e88304..1eb1d94 100644
  	int override_mtu = 0, opt;
  	struct timeval current;
  	char *sp;
-@@ -262,9 +270,11 @@ int main(int argc, char *argv[])
+@@ -262,9 +273,11 @@ int main(int argc, char *argv[])
  		case 'e':
  			config.crypto_passwd = optarg;
  			break;
@@ -196,7 +201,7 @@ index 6e88304..1eb1d94 100644
  		case 'v':
  			parse_virtual_route(optarg);
  			break;
-@@ -423,10 +433,12 @@ int main(int argc, char *argv[])
+@@ -423,10 +436,12 @@ int main(int argc, char *argv[])
  
  	if (enabled_encryption()) {
  		fill_with_string_md5sum(config.crypto_passwd, config.crypto_key, CRYPTO_MAX_KEY_SIZE);
